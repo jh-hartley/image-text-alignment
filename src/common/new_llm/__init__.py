@@ -5,7 +5,7 @@ import pkgutil
 from src.common.logs import setup_logging
 
 from .embedding import Embedding
-from .image_processor import get_processor
+from .image_processor import ImageEncoder
 from .llm import Llm
 
 logger = logging.getLogger(__name__)
@@ -19,4 +19,4 @@ for _, name, is_pkg in pkgutil.iter_modules(__path__, __name__ + "."):
         except ImportError as e:
             logger.warning(f"Failed to import provider package {name}: {e}")
 
-__all__ = ["Llm", "Embedding", "get_processor"]
+__all__ = ["Llm", "Embedding", "ImageEncoder"]
