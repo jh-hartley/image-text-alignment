@@ -6,10 +6,10 @@ from langchain_openai import ChatOpenAI
 from openai import RateLimitError
 from pydantic import BaseModel, SecretStr
 
-from src.config import config
 from src.common.llm.models import LlmModel
 from src.common.llm.providers.base import BaseLlmClient
 from src.common.llm.utils.parsing import parse_structured_output
+from src.config import config
 
 T = TypeVar("T", bound=BaseModel)
 

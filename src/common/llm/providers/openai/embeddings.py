@@ -1,7 +1,7 @@
 from langchain_openai import OpenAIEmbeddings
 
-from src.config import config
 from src.common.llm.providers.base import BaseEmbeddingClient
+from src.config import config
 
 
 class OpenAiEmbeddingClient(BaseEmbeddingClient):

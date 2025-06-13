@@ -2,7 +2,6 @@ from typing import Type, TypeVar, overload
 
 from pydantic import BaseModel
 
-from src.config import config
 from src.common.llm.models import (
     EmbeddingClient,
     LlmClient,
@@ -16,6 +15,7 @@ from src.common.llm.providers.openai.client import OpenAiClient
 from src.common.llm.providers.openai.embeddings import (
     OpenAiEmbeddingClient,
 )
+from src.config import config
 
 T = TypeVar("T", bound=BaseModel)
 

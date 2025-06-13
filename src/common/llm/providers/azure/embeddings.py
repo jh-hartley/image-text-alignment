@@ -1,8 +1,8 @@
 from langchain_openai import AzureOpenAIEmbeddings
 from pydantic import SecretStr
 
-from src.config import config
 from src.common.llm.providers.base import BaseEmbeddingClient
+from src.config import config
 
 
 class AzureEmbeddingClient(BaseEmbeddingClient):

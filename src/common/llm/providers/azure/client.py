@@ -6,10 +6,10 @@ from langchain_openai import AzureChatOpenAI
 from openai import RateLimitError
 from pydantic import BaseModel, SecretStr
 
-from src.config import config
 from src.common.llm.models import LlmModel
 from src.common.llm.providers.base import BaseLlmClient
 from src.common.llm.utils.parsing import parse_structured_output
+from src.config import config
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -33,7 +33,9 @@ class AzureLlm(BaseLlmClient):
         max_tries=config.OPENAI_LLM_MAX_TRIES,
         max_time=config.OPENAI_LLM_MAX_TIME,
         base=config.OPENAI_LLM_BACKOFF_BASE,
-        jitter=backoff.full_jitter if config.OPENAI_LLM_BACKOFF_JITTER else None,
+        jitter=(
+            backoff.full_jitter if config.OPENAI_LLM_BACKOFF_JITTER else None
+        ),
     )
     def invoke(
         self,
@@ -58,7 +60,9 @@ class AzureLlm(BaseLlmClient):
         max_tries=config.OPENAI_LLM_MAX_TRIES,
         max_time=config.OPENAI_LLM_MAX_TIME,
         base=config.OPENAI_LLM_BACKOFF_BASE,
-        jitter=backoff.full_jitter if config.OPENAI_LLM_BACKOFF_JITTER else None,
+        jitter=(
+            backoff.full_jitter if config.OPENAI_LLM_BACKOFF_JITTER else None
+        ),
     )
     async def ainvoke(
         self,
