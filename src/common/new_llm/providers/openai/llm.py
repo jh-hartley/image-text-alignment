@@ -1,17 +1,17 @@
-from typing import TypeVar
+from typing import cast
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, SecretStr
+from pydantic import SecretStr
 
-from src.common.new_llm.base_llm import BaseLlmProvider
-from src.common.new_llm.registry import register_llm_provider
+from src.common.new_llm.base_classes import BaseLlmProvider
+from src.common.new_llm.registry import register_provider
 from src.config import config
 
-T = TypeVar("T", bound=BaseModel)
+from .constants import PROVIDER
 
 
-@register_llm_provider("openai")
+@register_provider("llm", PROVIDER)
 class OpenAiLlmProvider(BaseLlmProvider):
     def __init__(
         self, model: str | None = None, temperature: float | None = None
@@ -26,12 +26,46 @@ class OpenAiLlmProvider(BaseLlmProvider):
             api_key=SecretStr(config.OPENAI_API_KEY),
         )
 
-    def invoke(self, system: str, human: str) -> str:
-        messages = [SystemMessage(content=system), HumanMessage(content=human)]
-        response = self._client.invoke(messages)
-        return response.content  # type: ignore
+    def invoke(
+        self, system: str, human: str, images: list[str] | None = None
+    ) -> str:
+        system_msg = SystemMessage(content=system)
 
-    async def ainvoke(self, system: str, human: str) -> str:
-        messages = [SystemMessage(content=system), HumanMessage(content=human)]
+        if images:
+            human_msg = HumanMessage(
+                content=[
+                    {"type": "text", "text": human},
+                    *[
+                        {"type": "image_url", "image_url": {"url": url}}
+                        for url in images
+                    ],
+                ]
+            )
+        else:
+            human_msg = HumanMessage(content=human)
+
+        messages = [system_msg, human_msg]
+        response = self._client.invoke(messages)
+        return cast(str, response.content)
+
+    async def ainvoke(
+        self, system: str, human: str, images: list[str] | None = None
+    ) -> str:
+        system_msg = SystemMessage(content=system)
+
+        if images:
+            human_msg = HumanMessage(
+                content=[
+                    {"type": "text", "text": human},
+                    *[
+                        {"type": "image_url", "image_url": {"url": url}}
+                        for url in images
+                    ],
+                ]
+            )
+        else:
+            human_msg = HumanMessage(content=human)
+
+        messages = [system_msg, human_msg]
         response = await self._client.ainvoke(messages)
-        return response.content  # type: ignore
+        return cast(str, response.content)

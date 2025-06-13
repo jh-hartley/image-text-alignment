@@ -1,8 +1,12 @@
 from abc import ABC, abstractmethod
+from typing import TypeVar
 
 import backoff
+from pydantic import BaseModel
 
 from src.config import config
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class BaseLlmProvider(ABC):
@@ -17,7 +21,9 @@ class BaseLlmProvider(ABC):
         ),
     )
     @abstractmethod
-    def invoke(self, system: str, human: str) -> str | dict:
+    def invoke(
+        self, system: str, human: str, images: list[str] | None = None
+    ) -> str | dict:
         raise NotImplementedError(
             "invoke has not been defined for this class."
         )
@@ -33,7 +39,9 @@ class BaseLlmProvider(ABC):
         ),
     )
     @abstractmethod
-    async def ainvoke(self, system: str, human: str) -> str | dict:
+    async def ainvoke(
+        self, system: str, human: str, images: list[str] | None = None
+    ) -> str | dict:
         raise NotImplementedError(
             "ainvoke has not been defined for this class."
         )

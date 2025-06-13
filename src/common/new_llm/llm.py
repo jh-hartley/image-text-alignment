@@ -1,33 +1,49 @@
+import logging
 from typing import Type, TypeVar, cast
 
 from pydantic import BaseModel
 
-from src.common.new_llm.registry import LLM_PROVIDERS
+from src.common.logs import setup_logging
+from src.common.new_llm.registry import get_provider
 from src.config import config
+
+logger = logging.getLogger(__name__)
+setup_logging()
 
 T = TypeVar("T", bound=BaseModel)
 
 
 class Llm:
+    """Main class for handling LLM interactions."""
+
     def __init__(self) -> None:
-        provider_name = config.LLM_PROVIDER
-        provider_cls = LLM_PROVIDERS.get(provider_name)
-        if provider_cls is None:
-            raise ValueError(f"Unknown LLM provider: {provider_name}")
+        """Initialize the LLM provider based on configuration."""
+        provider = config.LLM_PROVIDER.lower()
+        logger.debug(f"Initialising LLM provider: {provider}")
+        provider_cls = get_provider("llm", provider)
         self._provider = provider_cls()
 
     def invoke(
-        self, system: str, human: str, output_type: Type[T] | None = None
+        self,
+        system: str,
+        human: str,
+        output_type: Type[T] | None = None,
+        images: list[str] | None = None,
     ) -> T | str:
-        output = cast(str, self._provider.invoke(system, human))
+        output = cast(str, self._provider.invoke(system, human, images))
         if output_type:
             return output_type.model_validate_json(output)
         return output
 
     async def ainvoke(
-        self, system: str, human: str, output_type: Type[T] | None = None
+        self,
+        system: str,
+        human: str,
+        output_type: Type[T] | None = None,
+        images: list[str] | None = None,
     ) -> T | str:
-        output = cast(str, self._provider.invoke(system, human))
+        """Invoke the LLM asynchronously."""
+        output = cast(str, await self._provider.ainvoke(system, human, images))
         if output_type:
             return output_type.model_validate_json(output)
         return output
