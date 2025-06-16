@@ -1,9 +1,7 @@
 import logging
-from itertools import islice
-from typing import Iterable, Iterator, cast
+from typing import cast
 
-import numpy as np
-import tiktoken
+import backoff
 
 from src.common.logs import setup_logging
 from src.common.new_llm.registry import get_provider
@@ -17,108 +15,110 @@ class Embedding:
     """Main class for handling embeddings."""
 
     def __init__(self) -> None:
-        """Initialize the embedding provider based on configuration."""
         provider = config.LLM_PROVIDER.lower()
-        logger.debug(f"Initializing embedding provider: {provider}")
+        logger.debug(f"Initialising embedding provider: {provider}")
         provider_cls = get_provider("embedding", provider)
         self._provider = provider_cls()
 
-    def _get_encoding_name(self) -> str:
-        """Get the encoding name for the current provider's model."""
-        if config.LLM_PROVIDER == "azure":
-            model_name = config.AZURE_OPENAI_EMBEDDING_DEPLOYMENT
-        else:
-            model_name = config.OPENAI_EMBEDDING_MODEL
-
-        if model_name in {
-            "text-embedding-ada-002",
-            "text-embedding-3-small",
-            "text-embedding-3-large",
-        }:
-            return "cl100k_base"
-        if model_name in {
-            "ada-002",
-            "text-embedding-3-small",
-            "text-embedding-3-large",
-        }:
-            return "cl100k_base"
-        raise ValueError(f"Unknown embedding model: {model_name}")
-
-    def _batched(self, iterable: Iterable, n: int) -> Iterator[tuple]:
-        """Split an iterable into batches of size n."""
-        if n < 1:
-            raise ValueError("n must be at least one")
-        it = iter(iterable)
-        while batch := tuple(islice(it, n)):
-            yield batch
-
-    def _chunked_tokens(
-        self, text: str, chunk_length: int
-    ) -> Iterator[tuple[int]]:
-        """Split text into chunks of tokens."""
-        encoding_name = self._get_encoding_name()
-        encoding = tiktoken.get_encoding(encoding_name)
-        tokens = encoding.encode(text)
-        yield from self._batched(tokens, chunk_length)
-
-    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
-        result = await self._provider.aembed_documents(texts)
-        return cast(list[list[float]], result)
-
-    async def len_safe_get_embedding(
-        self, text: str, chunk_size: int | None = None
-    ) -> tuple[list[list[float]], list[int]]:
-        """Get embeddings for text that may exceed token limits by chunking."""
-        chunk_embeddings = []
-        chunk_lengths = []
-
-        chunk_size = chunk_size or config.EMBEDDING_DEFAULT_DIMENSIONS
-        encoding_name = self._get_encoding_name()
-        encoding = tiktoken.get_encoding(encoding_name)
-
-        for chunk in self._chunked_tokens(text, chunk_size):
-            chunk_text = encoding.decode(chunk)
-            embedding = (await self.aembed_documents([chunk_text]))[0]
-            chunk_embeddings.append(embedding)
-            chunk_lengths.append(len(chunk))
-
-        return chunk_embeddings, chunk_lengths
-
-    async def len_safe_get_averaged_embedding(
-        self, text: str, chunk_size: int | None = None
-    ) -> list[float]:
-        """Get a length-safe averaged embedding for the input text."""
-        chunk_embeddings, chunk_lengths = await self.len_safe_get_embedding(
-            text, chunk_size
-        )
-        averaged_embedding = np.average(
-            chunk_embeddings, axis=0, weights=chunk_lengths
-        )
-        normalised_embedding = averaged_embedding / np.linalg.norm(
-            averaged_embedding
-        )
-        return normalised_embedding.tolist()
-
-    def get_embedding(self, text: str) -> list[float]:
-        """Get embedding for a single text string."""
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=config.OPENAI_EMBEDDING_MAX_TRIES,
+        max_time=config.OPENAI_EMBEDDING_MAX_TIME,
+        base=config.OPENAI_EMBEDDING_BACKOFF_BASE,
+        jitter=(
+            backoff.full_jitter
+            if config.OPENAI_EMBEDDING_BACKOFF_JITTER
+            else None
+        ),
+    )
+    def embed_text(self, text: str) -> list[float]:
         logger.debug(f"Getting embedding for text: {text[:50]}...")
-        return self._provider.get_embedding(text)
+        return cast(list[float], self._provider.embed_text(text))
 
-    async def aget_embedding(self, text: str) -> list[float]:
-        """Get embedding for a single text string asynchronously."""
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=config.OPENAI_EMBEDDING_MAX_TRIES,
+        max_time=config.OPENAI_EMBEDDING_MAX_TIME,
+        base=config.OPENAI_EMBEDDING_BACKOFF_BASE,
+        jitter=(
+            backoff.full_jitter
+            if config.OPENAI_EMBEDDING_BACKOFF_JITTER
+            else None
+        ),
+    )
+    def embed_image(self, image: bytes) -> list[float]:
+        logger.debug("Getting embedding for image")
+        return cast(list[float], self._provider.embed_image(image))
+
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=config.OPENAI_EMBEDDING_MAX_TRIES,
+        max_time=config.OPENAI_EMBEDDING_MAX_TIME,
+        base=config.OPENAI_EMBEDDING_BACKOFF_BASE,
+        jitter=(
+            backoff.full_jitter
+            if config.OPENAI_EMBEDDING_BACKOFF_JITTER
+            else None
+        ),
+    )
+    def embed_multimodal(self, text: str, image: bytes) -> list[float]:
         logger.debug(
-            f"Getting embedding asynchronously for text: {text[:50]}..."
+            f"Getting multimodal embedding for text: {text[:50]}... and image"
         )
-        return await self._provider.aget_embedding(text)
+        return cast(list[float], self._provider.embed_multimodal(text, image))
 
-    def get_embeddings(self, texts: list[str]) -> list[list[float]]:
-        """Get embeddings for a list of text strings."""
-        logger.debug(f"Getting embeddings for {len(texts)} texts")
-        return self._provider.get_embeddings(texts)
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=config.OPENAI_EMBEDDING_MAX_TRIES,
+        max_time=config.OPENAI_EMBEDDING_MAX_TIME,
+        base=config.OPENAI_EMBEDDING_BACKOFF_BASE,
+        jitter=(
+            backoff.full_jitter
+            if config.OPENAI_EMBEDDING_BACKOFF_JITTER
+            else None
+        ),
+    )
+    async def aembed_text(self, text: str) -> list[float]:
+        logger.debug(f"Getting async embedding for text: {text[:50]}...")
+        return cast(list[float], await self._provider.aembed_text(text))
 
-    async def aget_embeddings(self, texts: list[str]) -> list[list[float]]:
-        """Get embeddings for a list of text strings asynchronously."""
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=config.OPENAI_EMBEDDING_MAX_TRIES,
+        max_time=config.OPENAI_EMBEDDING_MAX_TIME,
+        base=config.OPENAI_EMBEDDING_BACKOFF_BASE,
+        jitter=(
+            backoff.full_jitter
+            if config.OPENAI_EMBEDDING_BACKOFF_JITTER
+            else None
+        ),
+    )
+    async def aembed_image(self, image: bytes) -> list[float]:
+        logger.debug("Getting async embedding for image")
+        return cast(list[float], await self._provider.aembed_image(image))
+
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=config.OPENAI_EMBEDDING_MAX_TRIES,
+        max_time=config.OPENAI_EMBEDDING_MAX_TIME,
+        base=config.OPENAI_EMBEDDING_BACKOFF_BASE,
+        jitter=(
+            backoff.full_jitter
+            if config.OPENAI_EMBEDDING_BACKOFF_JITTER
+            else None
+        ),
+    )
+    async def aembed_multimodal(self, text: str, image: bytes) -> list[float]:
         logger.debug(
-            f"Getting embeddings asynchronously for {len(texts)} texts"
+            "Getting async multimodal embedding "
+            f"for text: {text[:50]}... and image"
         )
-        return await self._provider.aget_embeddings(texts)
+        return cast(
+            list[float], await self._provider.aembed_multimodal(text, image)
+        )

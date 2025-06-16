@@ -1,25 +1,46 @@
 from abc import ABC, abstractmethod
 
-import backoff
+from pydantic import BaseModel
 
-from src.config import config
+
+class EmbeddingRequest(BaseModel):
+    text: str | None = None
+    image: bytes | None = None
+
+    def __post_init_post_parse__(self) -> None:
+        if (self.text is None and self.image is None) or (
+            self.text is not None and self.image is not None
+        ):
+            raise ValueError(
+                "Exactly one of 'text' or 'image' must be provided."
+            )
+
+
+class EmbeddingResponse(BaseModel):
+    embedding: list[float]
 
 
 class BaseEmbeddingProvider(ABC):
-    @backoff.on_exception(
-        backoff.expo,
-        Exception,
-        max_tries=config.OPENAI_EMBEDDING_MAX_TRIES,
-        max_time=config.OPENAI_EMBEDDING_MAX_TIME,
-        base=config.OPENAI_EMBEDDING_BACKOFF_BASE,
-        jitter=(
-            backoff.full_jitter
-            if config.OPENAI_EMBEDDING_BACKOFF_JITTER
-            else None
-        ),
-    )
     @abstractmethod
-    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
-        raise NotImplementedError(
-            "aembed_documents has not been defined for this class."
-        )
+    def embed_text(self, text: str) -> list[float]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @abstractmethod
+    def embed_image(self, image: bytes) -> list[float]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @abstractmethod
+    def embed_multimodal(self, text: str, image: bytes) -> list[float]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @abstractmethod
+    async def aembed_text(self, text: str) -> list[float]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @abstractmethod
+    async def aembed_image(self, image: bytes) -> list[float]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @abstractmethod
+    async def aembed_multimodal(self, text: str, image: bytes) -> list[float]:
+        raise NotImplementedError("Subclasses must implement this method")

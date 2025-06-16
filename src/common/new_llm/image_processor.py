@@ -22,4 +22,4 @@ class ImageEncoder:
         Encode image bytes into the format required by the current provider.
         """
         logger.debug("Encoding image bytes")
-        return self._processor.encode_image(image_bytes) # type: ignore
+        return self._processor.encode_image(image_bytes)  # type: ignore

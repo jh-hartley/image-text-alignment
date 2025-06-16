@@ -1,6 +1,7 @@
 import logging
 from typing import Type, TypeVar, cast
 
+import backoff
 from pydantic import BaseModel
 
 from src.common.logs import setup_logging
@@ -17,12 +18,21 @@ class Llm:
     """Main class for handling LLM interactions."""
 
     def __init__(self) -> None:
-        """Initialize the LLM provider based on configuration."""
         provider = config.LLM_PROVIDER.lower()
         logger.debug(f"Initialising LLM provider: {provider}")
         provider_cls = get_provider("llm", provider)
         self._provider = provider_cls()
 
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=config.OPENAI_LLM_MAX_TRIES,
+        max_time=config.OPENAI_LLM_MAX_TIME,
+        base=config.OPENAI_LLM_BACKOFF_BASE,
+        jitter=(
+            backoff.full_jitter if config.OPENAI_LLM_BACKOFF_JITTER else None
+        ),
+    )
     def invoke(
         self,
         system: str,
@@ -35,6 +45,16 @@ class Llm:
             return output_type.model_validate_json(output)
         return output
 
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=config.OPENAI_LLM_MAX_TRIES,
+        max_time=config.OPENAI_LLM_MAX_TIME,
+        base=config.OPENAI_LLM_BACKOFF_BASE,
+        jitter=(
+            backoff.full_jitter if config.OPENAI_LLM_BACKOFF_JITTER else None
+        ),
+    )
     async def ainvoke(
         self,
         system: str,
