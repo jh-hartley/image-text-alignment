@@ -4,11 +4,11 @@ import logging
 from langchain_openai import OpenAIEmbeddings
 from pydantic import SecretStr
 
-from src.common.logs import setup_logging
-from src.common.new_llm.base_classes.base_embedding import (
+from src.common.llm.base_classes.base_embedding import (
     BaseEmbeddingProvider,
 )
-from src.common.new_llm.registry import register_provider
+from src.common.llm.registry import register_provider
+from src.common.logs import setup_logging
 from src.config import config
 
 from .constants import PROVIDER

@@ -1,6 +1,5 @@
-from src.common.llm.providers.azure.client import AzureLlm
-from src.common.llm.providers.azure.embeddings import (
-    AzureEmbeddingClient,
-)
+from .embedding import AzureEmbeddingProvider
+from .image_processor import AzureImageProcessor
+from .llm import AzureLlmProvider
 
-__all__ = ["AzureLlm", "AzureEmbeddingClient"]
+__all__ = ["AzureLlmProvider", "AzureEmbeddingProvider", "AzureImageProcessor"]

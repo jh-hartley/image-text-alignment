@@ -1,6 +1,9 @@
-from src.common.llm.providers.openai.client import OpenAiClient
-from src.common.llm.providers.openai.embeddings import (
-    OpenAiEmbeddingClient,
-)
+from .embedding import OpenAiEmbeddingProvider
+from .image_processor import OpenAiImageProcessor
+from .llm import OpenAiLlmProvider
 
-__all__ = ["OpenAiClient", "OpenAiEmbeddingClient"]
+__all__ = [
+    "OpenAiLlmProvider",
+    "OpenAiEmbeddingProvider",
+    "OpenAiImageProcessor",
+]

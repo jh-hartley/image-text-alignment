@@ -1,40 +1,29 @@
-from typing import TypeVar, cast
+from typing import cast
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import AzureChatOpenAI
-from pydantic import BaseModel, SecretStr
+from langchain_openai import ChatOpenAI
+from pydantic import SecretStr
 
-from src.common.new_llm.base_classes import BaseLlmProvider
-from src.common.new_llm.registry import register_provider
+from src.common.llm.base_classes import BaseLlmProvider
+from src.common.llm.registry import register_provider
 from src.config import config
 
 from .constants import PROVIDER
 
-T = TypeVar("T", bound=BaseModel)
-
-
-class MessageContent(BaseModel):
-    type: str
-    text: str | None = None
-    image_url: dict[str, str] | None = None
-
 
 @register_provider("llm", PROVIDER)
-class AzureLlmProvider(BaseLlmProvider):
+class OpenAiLlmProvider(BaseLlmProvider):
     def __init__(
         self, model: str | None = None, temperature: float | None = None
     ):
-        self._client = AzureChatOpenAI(
-            model=model or config.AZURE_OPENAI_DEPLOYMENT,
+        self._client = ChatOpenAI(
+            model=model or config.OPENAI_LLM_MODEL,
             temperature=(
                 temperature
                 if temperature is not None
                 else config.OPENAI_LLM_TEMPERATURE
             ),
-            api_key=SecretStr(config.AZURE_OPENAI_API_KEY),
-            azure_endpoint=config.AZURE_OPENAI_ENDPOINT,
-            api_version=config.AZURE_OPENAI_API_VERSION,
-            azure_deployment=config.AZURE_OPENAI_DEPLOYMENT,
+            api_key=SecretStr(config.OPENAI_API_KEY),
         )
 
     def invoke(
