@@ -3,7 +3,9 @@ from pathlib import Path
 from src.common.exceptions import MalformedPrompt
 
 
-def read_prompt_from_txt(file_path: str | Path, encoding: str = "utf-8") -> str:
+def read_prompt_from_txt(
+    file_path: str | Path, encoding: str = "utf-8"
+) -> str:
     try:
         with open(file_path, "r", encoding=encoding) as f:
             content = f.read().strip()
