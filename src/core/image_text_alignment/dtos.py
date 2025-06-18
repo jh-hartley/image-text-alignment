@@ -7,9 +7,13 @@ class ProductImageCheckInput(BaseModel):
     image: str
 
 
-class ProductImageCheckPrediction(BaseModel):
+class ProductImageCheckLLMResponse(BaseModel):
+    """Used for parsing LLM output only."""
+
     is_mismatch: bool
     justification: str
+    description_synthesis: str
+    image_summary: str
 
 
 class ProductImageCheckResult(BaseModel):
@@ -17,3 +21,5 @@ class ProductImageCheckResult(BaseModel):
     is_mismatch: bool
     justification: str
     image_path: str | None = None
+    description_synthesis: str
+    image_summary: str

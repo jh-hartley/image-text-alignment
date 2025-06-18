@@ -45,6 +45,8 @@ class ImageTextAlignmentService:
                         is_mismatch=False,
                         justification="No product overview found.",
                         image_path=None,
+                        description_synthesis="N/A",
+                        image_summary="N/A",
                     )
                 )
                 continue
@@ -63,6 +65,8 @@ class ImageTextAlignmentService:
                         is_mismatch=False,
                         justification="No images found.",
                         image_path=None,
+                        description_synthesis="N/A",
+                        image_summary="N/A",
                     )
                 )
                 continue
@@ -77,6 +81,8 @@ class ImageTextAlignmentService:
                         is_mismatch=False,
                         justification="Image file not found.",
                         image_path=image_result.filename,
+                        description_synthesis="N/A",
+                        image_summary="N/A",
                     )
                 )
                 continue
@@ -107,6 +113,9 @@ class ImageTextAlignmentService:
                 product_key=product_key,
                 is_mismatch=False,
                 justification=justification,
+                image_path=None,
+                description_synthesis="N/A",
+                image_summary="N/A",
             )
         )
 
