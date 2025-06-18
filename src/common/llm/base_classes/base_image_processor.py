@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 
-from src.common.logs import setup_logging
+from src.common.logging import setup_logging
 
 logger = logging.getLogger(__name__)
 setup_logging()

@@ -2,7 +2,7 @@ import importlib
 import logging
 import pkgutil
 
-from src.common.logs import setup_logging
+from src.common.logging import setup_logging
 
 from .embedding import Embedding
 from .image_processor import ImageEncoder
