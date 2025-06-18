@@ -5,12 +5,13 @@ from pathlib import Path
 
 from src.common.db.session import SessionLocal
 from src.common.llm import Llm
+from src.core.data_ingestion.queries import get_random_product_keys
 from src.core.image_text_alignment.repositories import (
     ProductOverviewRepository,
 )
 from src.core.image_text_alignment.service import ImageTextAlignmentService
 
-OUTPUT_DIR = Path(__file__).parent / "llm_output"
+OUTPUT_DIR = Path(__file__).parent / "llm_test_output"
 
 
 def clear_output_dir():
@@ -24,18 +25,28 @@ def clear_output_dir():
         OUTPUT_DIR.mkdir()
 
 
-def main(product_key: str):
+def main(product_key: str | None = None):
     async def run():
         clear_output_dir()
         with SessionLocal() as session:
+            # If no product_key, get a random one
+            if product_key is None:
+                keys = get_random_product_keys(session, 1)
+                if not keys:
+                    print("No product keys found in the database.")
+                    return
+                key = keys[0]
+                print(f"Randomly selected product_key: {key}")
+            else:
+                key = product_key
             repo = ProductOverviewRepository(session)
             llm = Llm()
             service = ImageTextAlignmentService(
                 product_overview_repo=repo, llm=llm
             )
-            results = await service.check_images_for_products([product_key])
+            results = await service.check_images_for_products([key])
             # Save results to file
-            output_txt = OUTPUT_DIR / f"{product_key}.txt"
+            output_txt = OUTPUT_DIR / f"{key}.txt"
             with open(output_txt, "w", encoding="utf-8") as f:
                 for result in results:
                     f.write(f"Product Key: {result.product_key}\n")
@@ -43,32 +54,23 @@ def main(product_key: str):
                     f.write(f"Justification: {result.justification}\n\n")
             print(f"Results saved to {output_txt}")
             # Copy the first image used (if any)
-            product = repo.get_product_overview(product_key)
-            if product:
-                image_paths = [
-                    v
-                    for v in product.image_local_paths.model_dump().values()
-                    if v
-                ]
-                if image_paths:
-                    image_path = Path(image_paths[0])
-                    if image_path.exists():
-                        dest_path = OUTPUT_DIR / image_path.name
-                        shutil.copy(image_path, dest_path)
-                        print(f"Copied image to {dest_path}")
-                    else:
-                        print(f"Image file not found: {image_path}")
+            if results and results[0].image_path:
+                image_path = Path(results[0].image_path)
+                if image_path.exists():
+                    dest_path = OUTPUT_DIR / image_path.name
+                    shutil.copy(image_path, dest_path)
+                    print(f"Copied image to {dest_path}")
                 else:
-                    print("No image paths found for product.")
+                    print(f"Image file not found: {image_path}")
             else:
-                print("No product overview found.")
+                print("No image path found in result.")
 
     asyncio.run(run())
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python test_image_text_alignment_llm.py <PRODUCT_KEY>")
+    if len(sys.argv) > 2:
+        print("Usage: python process_single_image.py [PRODUCT_KEY]")
         sys.exit(1)
-    product_key = sys.argv[1]
+    product_key = sys.argv[1] if len(sys.argv) == 2 else None
     main(product_key)

@@ -31,21 +31,39 @@ class ImageTextAlignmentService:
         results: list[ProductImageCheckResult] = []
 
         for product_key in product_keys:
-            product = self.product_overview_repo.get_product_overview(
-                product_key
+            product: ProductOverviewRecord | None = (
+                self.product_overview_repo.get_product_overview(product_key)
             )
 
-            if product is None:
-                self._log_and_append_result(
-                    results, product_key, "No product overview found."
+            if not product:
+                self.logger.warning(
+                    f"No product overview found for product_key={product_key}"
+                )
+                results.append(
+                    ProductImageCheckResult(
+                        product_key=product_key,
+                        is_mismatch=False,
+                        justification="No product overview found.",
+                        image_path=None,
+                    )
                 )
                 continue
 
-            image_paths = self._get_image_paths(product)
+            image_paths = [
+                v for v in product.image_local_paths.model_dump().values() if v
+            ]
 
             if not image_paths:
-                self._log_and_append_result(
-                    results, product_key, "No images found."
+                self.logger.warning(
+                    f"No images found for product_key={product_key}"
+                )
+                results.append(
+                    ProductImageCheckResult(
+                        product_key=product_key,
+                        is_mismatch=False,
+                        justification="No images found.",
+                        image_path=None,
+                    )
                 )
                 continue
 
@@ -55,9 +73,16 @@ class ImageTextAlignmentService:
             )
             try:
                 image_bytes = image_file_to_bytes(image_path)
+                image_str = self.image_encoder.encode_image(image_bytes)
             except FileNotFoundError:
-                self._log_and_append_result(
-                    results, product_key, "Image file not found."
+                self.logger.warning(f"Image file not found: {image_path}")
+                results.append(
+                    ProductImageCheckResult(
+                        product_key=product_key,
+                        is_mismatch=False,
+                        justification="Image file not found.",
+                        image_path=image_path,
+                    )
                 )
                 continue
 
@@ -65,9 +90,10 @@ class ImageTextAlignmentService:
             input_dto = ProductImageCheckInput(
                 product_key=product_key,
                 description=description,
-                image=self.image_encoder.encode_image(image_bytes),
+                image=image_str,
             )
             result = await self.llm_checker.check(input_dto)
+            result.image_path = image_path
             results.append(result)
 
         return results

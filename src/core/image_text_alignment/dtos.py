@@ -16,3 +16,4 @@ class ProductImageCheckResult(BaseModel):
     product_key: str
     is_mismatch: bool
     justification: str
+    image_path: str | None = None
