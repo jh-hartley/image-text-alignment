@@ -68,9 +68,7 @@ class ImageTextAlignmentService:
                 continue
 
             image_url = image_paths[0]
-            image_result = load_image_bytes_from_url(
-                self.product_overview_repo.product_repo.session, image_url
-            )
+            image_result = load_image_bytes_from_url(image_url)
             if image_result.image_bytes is None:
                 self.logger.warning(f"Image file not found: {image_url}")
                 results.append(
@@ -78,7 +76,7 @@ class ImageTextAlignmentService:
                         product_key=product_key,
                         is_mismatch=False,
                         justification="Image file not found.",
-                        image_path=image_url,
+                        image_path=image_result.filename,
                     )
                 )
                 continue
@@ -92,7 +90,7 @@ class ImageTextAlignmentService:
                 image=image_str,
             )
             result = await self.llm_checker.check(input_dto)
-            result.image_path = image_url
+            result.image_path = image_result.filename
             results.append(result)
 
         return results

@@ -108,17 +108,13 @@ class ProductOverviewRepository:
         image_local_paths_dict = {}
         for i in range(1, 11):
             image_url = getattr(coalesce, f"image_url_{i}", None)
-            logger.info(f"Checking image_url_{i}: {image_url}")
             if image_url is not None:
                 local_path = self._map_image_url_to_local_path(
                     image_url, self.image_path_repo
                 )
-                logger.info(
-                    f"Mapped image_url_{i} to local path: {local_path}"
-                )
             else:
                 local_path = None
-                logger.info(f"No image_url_{i} present.")
+                logger.debug(f"No image_url_{i} present.")
             image_local_paths_dict[f"image_local_path_{i}"] = local_path
         image_local_paths = ImageLocalPaths(**image_local_paths_dict)
 

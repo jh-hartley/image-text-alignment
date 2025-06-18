@@ -1,24 +1,15 @@
+import re
 from pathlib import Path
 
-from sqlalchemy.orm import Session
-
-from src.core.image_text_alignment.dtos import ImageLoadResult
-
-from .filepath_mapping import map_image_url_to_filename
+from src.core.image_encoding.dtos import ImageLoadResult
 
 
-def load_image_bytes_from_url(
-    session: Session, image_url: str
-) -> ImageLoadResult:
-    """
-    Return an ImageLoadResult for a given image_url.
-    """
-    filename = map_image_url_to_filename(session, image_url)
-    if not filename:
-        return ImageLoadResult(image_bytes=None, filename=None)
-    local_path = Path("data/image") / filename
-    if not local_path.is_file():
-        return ImageLoadResult(image_bytes=None, filename=filename)
+def load_image_bytes_from_url(image_url: str) -> ImageLoadResult:
+    match = re.search(r"\.(jpg|jpeg|png|webp|gif)", image_url, re.IGNORECASE)
+    trimmed_url = image_url[: match.end()] if match else image_url
+    path_obj = Path(trimmed_url)
+    if not path_obj.is_file():
+        return ImageLoadResult(image_bytes=None, filename=trimmed_url)
     return ImageLoadResult(
-        image_bytes=local_path.read_bytes(), filename=filename
+        image_bytes=path_obj.read_bytes(), filename=trimmed_url
     )

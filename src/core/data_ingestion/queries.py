@@ -25,7 +25,7 @@ def get_random_product_keys(
     seed: int | None = None,
 ) -> Sequence[str]:
     if seed is not None:
-        logger.info(f"Random seed for get_random_product_keys: {seed}")
+        logger.debug(f"Random seed for get_random_product_keys: {seed}")
     rng = get_rng(seed)
 
     query = session.query(ProductRecord.product_key)
