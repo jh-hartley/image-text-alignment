@@ -1,13 +1,15 @@
+from typing import Sequence
+
 from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from src.core.data_ingestion.records import (
-    ProductRecord,
-    ProductCategoryRecord,
+    AttributeRecord,
     CategoryRecord,
     ProductAttributeValueRecord,
-    AttributeRecord,
+    ProductCategoryRecord,
+    ProductRecord,
 )
-from sqlalchemy.orm import Session
-from typing import Sequence
 
 
 def get_random_product_keys(
@@ -23,13 +25,10 @@ def get_random_product_keys(
         ]
         if not category_keys:
             return []
-        query = (
-            query.join(
-                ProductCategoryRecord,
-                ProductRecord.product_key == ProductCategoryRecord.product_key,
-            )
-            .filter(ProductCategoryRecord.category_key.in_(category_keys))
-        )
+        query = query.join(
+            ProductCategoryRecord,
+            ProductRecord.product_key == ProductCategoryRecord.product_key,
+        ).filter(ProductCategoryRecord.category_key.in_(category_keys))
     query = query.order_by(func.random()).limit(n)
     return [str(row[0]) for row in query.all()]
 
