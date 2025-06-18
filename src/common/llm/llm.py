@@ -1,5 +1,5 @@
 import logging
-from typing import Type, TypeVar, cast
+from typing import Type, TypeVar, cast, overload
 
 import backoff
 from pydantic import BaseModel
@@ -23,6 +23,24 @@ class Llm:
         provider_cls = get_provider("llm", provider)
         self._provider = provider_cls()
 
+    @overload
+    def invoke(
+        self,
+        system: str,
+        human: str,
+        output_type: Type[T],
+        images: list[str] | None = None,
+    ) -> T: ...
+
+    @overload
+    def invoke(
+        self,
+        system: str,
+        human: str,
+        output_type: None = None,
+        images: list[str] | None = None,
+    ) -> str: ...
+
     @backoff.on_exception(
         backoff.expo,
         Exception,
@@ -44,6 +62,24 @@ class Llm:
         if output_type:
             return output_type.model_validate_json(output)
         return output
+
+    @overload
+    async def ainvoke(
+        self,
+        system: str,
+        human: str,
+        output_type: Type[T],
+        images: list[str] | None = None,
+    ) -> T: ...
+
+    @overload
+    async def ainvoke(
+        self,
+        system: str,
+        human: str,
+        output_type: None = None,
+        images: list[str] | None = None,
+    ) -> str: ...
 
     @backoff.on_exception(
         backoff.expo,

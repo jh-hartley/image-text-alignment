@@ -1,15 +1,125 @@
-from sqlalchemy.orm import Session
+import logging
+
+from src.common.llm import ImageEncoder, Llm
+from src.core.image_encoding import load_image_bytes_from_url
+from src.core.image_text_alignment.dtos import (
+    ProductImageCheckInput,
+    ProductImageCheckResult,
+)
+from src.core.image_text_alignment.llm_checker import ProductImageLLMChecker
+from src.core.image_text_alignment.records import ProductOverviewRecord
+from src.core.image_text_alignment.repositories import (
+    ProductOverviewRepository,
+)
 
 
-class CheckImageTextAlignmentService:
-    """Service layer for check image text alignment operations."""
+class ImageTextAlignmentService:
+    def __init__(
+        self,
+        product_overview_repo: ProductOverviewRepository,
+        llm: Llm,
+        logger: logging.Logger | None = None,
+    ) -> None:
+        self.product_overview_repo = product_overview_repo
+        self.llm_checker = ProductImageLLMChecker(llm)
+        self.logger = logger or logging.getLogger(__name__)
+        self.image_encoder = ImageEncoder()
 
-    def __init__(self, session: Session) -> None:
-        self.session = session
+    async def check_images_for_products(
+        self, product_keys: list[str]
+    ) -> list[ProductImageCheckResult]:
+        results: list[ProductImageCheckResult] = []
 
-    @staticmethod
-    def from_session(session: Session) -> "CheckImageTextAlignmentService":
-        return CheckImageTextAlignmentService(session)
+        for product_key in product_keys:
+            product: ProductOverviewRecord | None = (
+                self.product_overview_repo.get_product_overview(product_key)
+            )
 
-    async def check_colour_matches_description(self, product_key: str) -> bool:
-        raise NotImplementedError
+            if not product:
+                self.logger.warning(
+                    f"No product overview found for product_key={product_key}"
+                )
+                results.append(
+                    ProductImageCheckResult(
+                        product_key=product_key,
+                        is_mismatch=False,
+                        justification="No product overview found.",
+                        image_path=None,
+                        description_synthesis="N/A",
+                        image_summary="N/A",
+                    )
+                )
+                continue
+
+            image_paths = [
+                v for v in product.image_local_paths.model_dump().values() if v
+            ]
+
+            if not image_paths:
+                self.logger.warning(
+                    f"No images found for product_key={product_key}"
+                )
+                results.append(
+                    ProductImageCheckResult(
+                        product_key=product_key,
+                        is_mismatch=False,
+                        justification="No images found.",
+                        image_path=None,
+                        description_synthesis="N/A",
+                        image_summary="N/A",
+                    )
+                )
+                continue
+
+            image_url = image_paths[0]
+            image_result = load_image_bytes_from_url(image_url)
+            if image_result.image_bytes is None:
+                self.logger.warning(f"Image file not found: {image_url}")
+                results.append(
+                    ProductImageCheckResult(
+                        product_key=product_key,
+                        is_mismatch=False,
+                        justification="Image file not found.",
+                        image_path=image_result.filename,
+                        description_synthesis="N/A",
+                        image_summary="N/A",
+                    )
+                )
+                continue
+            image_str = self.image_encoder.encode_image(
+                image_result.image_bytes
+            )
+            description = product.to_llm_string()
+            input_dto = ProductImageCheckInput(
+                product_key=product_key,
+                description=description,
+                image=image_str,
+            )
+            result = await self.llm_checker.check(input_dto)
+            result.image_path = image_result.filename
+            results.append(result)
+
+        return results
+
+    def _log_and_append_result(
+        self,
+        results: list[ProductImageCheckResult],
+        product_key: str,
+        justification: str,
+    ) -> None:
+        self.logger.warning(f"{justification} for product_key={product_key}")
+        results.append(
+            ProductImageCheckResult(
+                product_key=product_key,
+                is_mismatch=False,
+                justification=justification,
+                image_path=None,
+                description_synthesis="N/A",
+                image_summary="N/A",
+            )
+        )
+
+    def _get_image_paths(self, product: ProductOverviewRecord) -> list[str]:
+        return [
+            v for v in product.image_local_paths.model_dump().values() if v
+        ]

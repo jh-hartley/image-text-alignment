@@ -1,0 +1,81 @@
+import asyncio
+import shutil
+import sys
+from pathlib import Path
+
+from src.common.db.session import SessionLocal
+from src.common.llm import Llm
+from src.core.data_ingestion.queries import get_random_product_keys
+from src.core.image_text_alignment.repositories import (
+    ProductOverviewRepository,
+)
+from src.core.image_text_alignment.service import ImageTextAlignmentService
+
+OUTPUT_DIR = Path(__file__).parent / "llm_test_output"
+
+
+def clear_output_dir():
+    if OUTPUT_DIR.exists():
+        for item in OUTPUT_DIR.iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+    else:
+        OUTPUT_DIR.mkdir()
+
+
+def main(product_key: str | None = None):
+    async def run():
+        clear_output_dir()
+        with SessionLocal() as session:
+            # If no product_key, get a random one
+            if product_key is None:
+                keys = get_random_product_keys(session, 1)
+                if not keys:
+                    print("No product keys found in the database.")
+                    return
+                key = keys[0]
+                print(f"Randomly selected product_key: {key}")
+            else:
+                key = product_key
+            repo = ProductOverviewRepository(session)
+            llm = Llm()
+            service = ImageTextAlignmentService(
+                product_overview_repo=repo, llm=llm
+            )
+            results = await service.check_images_for_products([key])
+
+            output_txt = OUTPUT_DIR / f"{key}.txt"
+            with open(output_txt, "w", encoding="utf-8") as f:
+                for result in results:
+                    f.write(f"Product Key: {result.product_key}\n")
+                    f.write(f"Is Mismatch: {result.is_mismatch}\n")
+                    f.write(f"Justification: {result.justification}\n")
+                    f.write(
+                        "Description Synthesis: "
+                        f"{result.description_synthesis}\n"
+                    )
+                    f.write(f"Image Summary: {result.image_summary}\n\n")
+            print(f"Results saved to {output_txt}")
+
+            if results and results[0].image_path:
+                image_path = Path(results[0].image_path)
+                if image_path.exists():
+                    dest_path = OUTPUT_DIR / image_path.name
+                    shutil.copy(image_path, dest_path)
+                    print(f"Copied image to {dest_path}")
+                else:
+                    print(f"Image file not found: {image_path}")
+            else:
+                print("No image path found in result.")
+
+    asyncio.run(run())
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 2:
+        print("Usage: python process_single_image.py [PRODUCT_KEY]")
+        sys.exit(1)
+    product_key = sys.argv[1] if len(sys.argv) == 2 else None
+    main(product_key)
