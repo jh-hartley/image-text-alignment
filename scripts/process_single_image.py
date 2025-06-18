@@ -3,7 +3,9 @@ import shutil
 import sys
 from pathlib import Path
 
-from src.common.db.session import SessionLocal
+from sqlalchemy.orm import Session
+
+from src.common.db.engine import engine
 from src.common.llm import Llm
 from src.core.data_ingestion.queries import get_random_product_keys
 from src.core.image_text_alignment.repositories import (
@@ -28,7 +30,7 @@ def clear_output_dir():
 def main(product_key: str | None = None):
     async def run():
         clear_output_dir()
-        with SessionLocal() as session:
+        with Session(engine) as session:
             # If no product_key, get a random one
             if product_key is None:
                 keys = get_random_product_keys(session, 1)
@@ -39,10 +41,10 @@ def main(product_key: str | None = None):
                 print(f"Randomly selected product_key: {key}")
             else:
                 key = product_key
-            repo = ProductOverviewRepository(session)
+            product_overview_repo = ProductOverviewRepository(session)
             llm = Llm()
             service = ImageTextAlignmentService(
-                product_overview_repo=repo, llm=llm
+                product_overview_repo=product_overview_repo, llm=llm
             )
             results = await service.check_images_for_products([key])
 

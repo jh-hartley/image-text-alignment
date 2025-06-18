@@ -1,10 +1,11 @@
 from uuid import UUID
-from sqlalchemy import Column, Boolean, Text, TIMESTAMP
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from src.core.image_text_alignment.dtos import ImagePredictionDTO
-from src.common.db.base import Base
 
 from pydantic import BaseModel
+from sqlalchemy import TIMESTAMP, Boolean, Column, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+
+from src.common.db.base import Base
+from src.core.image_text_alignment.dtos import ImagePredictionDTO
 
 
 class Categories(BaseModel):
@@ -110,7 +111,10 @@ class ImagePredictionRecord(Base):
     updated_at = Column(TIMESTAMP(timezone=True))
 
     def to_dict(self) -> dict:
-        return {field: getattr(self, field) for field in ImagePredictionDTO.model_fields}
+        return {
+            field: getattr(self, field)
+            for field in ImagePredictionDTO.model_fields
+        }
 
     def to_model(self) -> ImagePredictionDTO:
         return ImagePredictionDTO(**self.to_dict())

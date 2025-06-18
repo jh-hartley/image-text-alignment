@@ -1,10 +1,15 @@
 import logging
 import os
 import re
+from typing import Any, cast
+from uuid import UUID
 
+from sqlalchemy import outerjoin, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from src.common.logging import setup_logging
+from src.core.data_ingestion.records import ProductRecord
 from src.core.data_ingestion.repositories import (
     AttributeRepository,
     DunelmCoalesceOutputRepository,
@@ -15,9 +20,9 @@ from src.core.data_ingestion.repositories import (
 from src.core.image_text_alignment.records import (
     Categories,
     ImageLocalPaths,
+    ImagePredictionRecord,
     Prices,
     ProductOverviewRecord,
-    ImagePredictionRecord,
 )
 
 logger = logging.getLogger(__name__)
@@ -158,7 +163,9 @@ class ImagePredictionRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def get(self, batch_key: str, product_key: str) -> ImagePredictionRecord | None:
+    def get(
+        self, batch_key: str, product_key: str
+    ) -> ImagePredictionRecord | None:
         return (
             self.session.query(ImagePredictionRecord)
             .filter_by(batch_key=batch_key, product_key=product_key)
@@ -175,3 +182,64 @@ class ImagePredictionRepository:
     def add(self, record: ImagePredictionRecord) -> None:
         self.session.add(record)
         self.session.commit()
+
+
+class AsyncImagePredictionRepository:
+    def __init__(self, session: Any) -> None:
+        self.session = session
+
+    async def get(
+        self, batch_key: UUID, product_key: UUID
+    ) -> ImagePredictionRecord | None:
+        result = await self.session.execute(
+            select(ImagePredictionRecord).where(
+                ImagePredictionRecord.batch_key == batch_key,
+                ImagePredictionRecord.product_key == product_key,
+            )
+        )
+        return cast(ImagePredictionRecord | None, result.scalar_one_or_none())
+
+    async def find_by_batch(
+        self, batch_key: UUID
+    ) -> list[ImagePredictionRecord]:
+        result = await self.session.execute(
+            select(ImagePredictionRecord).where(
+                ImagePredictionRecord.batch_key == batch_key
+            )
+        )
+        return cast(list[ImagePredictionRecord], result.scalars().all())
+
+    async def find_unprocessed_products(self, batch_key: UUID) -> list[str]:
+        stmt = (
+            select(ProductRecord.product_key)
+            .select_from(
+                outerjoin(
+                    ProductRecord,
+                    ImagePredictionRecord,
+                    (
+                        ProductRecord.product_key
+                        == ImagePredictionRecord.product_key
+                    )
+                    & (ImagePredictionRecord.batch_key == batch_key),
+                )
+            )
+            .where(ImagePredictionRecord.product_key.is_(None))
+        )
+        result = await self.session.execute(stmt)
+        return [str(row[0]) for row in result.all()]
+
+    async def add(self, record: ImagePredictionRecord) -> None:
+        stmt = pg_insert(ImagePredictionRecord).values(record.to_dict())
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["batch_key", "product_key"],
+            set_={
+                "image_path": record.image_path,
+                "is_mismatch": record.is_mismatch,
+                "justification": record.justification,
+                "description_synthesis": record.description_synthesis,
+                "image_summary": record.image_summary,
+                "updated_at": record.updated_at,
+            },
+        )
+        await self.session.execute(stmt)
+        await self.session.commit()

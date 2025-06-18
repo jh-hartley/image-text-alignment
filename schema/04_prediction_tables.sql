@@ -7,5 +7,6 @@ CREATE TABLE image_prediction (
     description_synthesis TEXT,
     image_summary TEXT,
     created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    updated_at TIMESTAMP,
+    PRIMARY KEY (batch_key, product_key)
 ); 
