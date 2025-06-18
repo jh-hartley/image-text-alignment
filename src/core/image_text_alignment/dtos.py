@@ -13,8 +13,10 @@ class ProductImageCheckInput(BaseModel):
 class ProductImageCheckLLMResponse(BaseModel):
     """Used for parsing LLM output only."""
 
-    is_mismatch: bool
-    justification: str
+    attribute_matches_image: str
+    description_matches_image: str
+    attribute_image_justification: str
+    description_image_justification: str
     description_synthesis: str
     image_summary: str
 
@@ -22,8 +24,10 @@ class ProductImageCheckLLMResponse(BaseModel):
 class ProductImageCheckResult(BaseModel):
     product_key: str
     image_path: str | None = None
-    is_mismatch: bool
-    justification: str
+    attribute_matches_image: str
+    description_matches_image: str
+    attribute_image_justification: str
+    description_image_justification: str
     description_synthesis: str
     image_summary: str
 
@@ -31,9 +35,11 @@ class ProductImageCheckResult(BaseModel):
 class ImagePredictionDTO(BaseModel):
     batch_key: UUID
     product_key: UUID
-    image_path: str | None
-    is_mismatch: bool
-    justification: str | None
+    image_name: str | None
+    attribute_matches_image: str
+    description_matches_image: str
+    attribute_image_justification: str | None
+    description_image_justification: str | None
     description_synthesis: str | None
     image_summary: str | None
     created_at: datetime

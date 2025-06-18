@@ -28,8 +28,10 @@ class ProductImageLLMChecker:
         )
         return ProductImageCheckResult(
             product_key=input.product_key,
-            is_mismatch=prediction.is_mismatch,
-            justification=prediction.justification,
+            attribute_matches_image=prediction.attribute_matches_image,
+            description_matches_image=prediction.description_matches_image,
+            attribute_image_justification=prediction.attribute_image_justification,
+            description_image_justification=prediction.description_image_justification,
             description_synthesis=prediction.description_synthesis,
             image_summary=prediction.image_summary,
         )

@@ -104,8 +104,10 @@ class ImageTextAlignmentService:
             )
             result = ProductImageCheckResult(
                 product_key=product_key,
-                is_mismatch=False,
-                justification="No product overview found.",
+                attribute_matches_image="N/A",
+                description_matches_image="N/A",
+                attribute_image_justification="No product overview found.",
+                description_image_justification="No product overview found.",
                 image_path=None,
                 description_synthesis="N/A",
                 image_summary="N/A",
@@ -123,8 +125,10 @@ class ImageTextAlignmentService:
             )
             result = ProductImageCheckResult(
                 product_key=product_key,
-                is_mismatch=False,
-                justification="No images found.",
+                attribute_matches_image="N/A",
+                description_matches_image="N/A",
+                attribute_image_justification="No images found.",
+                description_image_justification="No images found.",
                 image_path=None,
                 description_synthesis="N/A",
                 image_summary="N/A",
@@ -138,8 +142,10 @@ class ImageTextAlignmentService:
             self.logger.warning(f"Image file not found: {image_url}")
             result = ProductImageCheckResult(
                 product_key=product_key,
-                is_mismatch=False,
-                justification="Image file not found.",
+                attribute_matches_image="N/A",
+                description_matches_image="N/A",
+                attribute_image_justification="Image file not found.",
+                description_image_justification="Image file not found.",
                 image_path=image_result.filename,
                 description_synthesis="N/A",
                 image_summary="N/A",
@@ -167,12 +173,17 @@ class ImageTextAlignmentService:
         Updates the timestamps appropriately.
         """
         now = clock.now()
+        image_path = result.image_path
+        if image_path and image_path.startswith("data/image/"):
+            image_path = image_path[len("data/image/") :]
         record = ImagePredictionRecord(
             batch_key=batch_key,
             product_key=UUID(result.product_key),
-            image_path=result.image_path,
-            is_mismatch=result.is_mismatch,
-            justification=result.justification,
+            image_name=image_path,
+            attribute_matches_image=result.attribute_matches_image,
+            description_matches_image=result.description_matches_image,
+            attribute_image_justification=result.attribute_image_justification,
+            description_image_justification=result.description_image_justification,
             description_synthesis=result.description_synthesis,
             image_summary=result.image_summary,
             created_at=now,

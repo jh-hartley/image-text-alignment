@@ -172,7 +172,7 @@ class ImagePredictionDTO(BaseModel):
     batch_key: UUID
     product_key: UUID
     image_path: str | None
-    is_mismatch: bool
+    is_mismatch: str
     justification: str | None
     description_synthesis: str | None
     image_summary: str | None

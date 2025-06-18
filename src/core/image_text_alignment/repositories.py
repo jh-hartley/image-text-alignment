@@ -233,9 +233,11 @@ class AsyncImagePredictionRepository:
         stmt = stmt.on_conflict_do_update(
             index_elements=["batch_key", "product_key"],
             set_={
-                "image_path": record.image_path,
-                "is_mismatch": record.is_mismatch,
-                "justification": record.justification,
+                "image_name": record.image_name,
+                "attribute_matches_image": record.attribute_matches_image,
+                "description_matches_image": record.description_matches_image,
+                "attribute_image_justification": record.attribute_image_justification,
+                "description_image_justification": record.description_image_justification,
                 "description_synthesis": record.description_synthesis,
                 "image_summary": record.image_summary,
                 "updated_at": record.updated_at,
