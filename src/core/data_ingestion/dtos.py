@@ -166,3 +166,15 @@ class AttributeDTO(BaseModel):
     friendly_name: str | None
     attribute_type: str | None
     unit_measure_type: str | None
+
+
+class ImagePredictionDTO(BaseModel):
+    batch_key: UUID
+    product_key: UUID
+    image_path: str | None
+    is_mismatch: bool
+    justification: str | None
+    description_synthesis: str | None
+    image_summary: str | None
+    created_at: str
+    updated_at: str

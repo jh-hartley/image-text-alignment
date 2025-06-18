@@ -1,6 +1,11 @@
 from uuid import UUID
 
 from pydantic import BaseModel
+from sqlalchemy import TIMESTAMP, Boolean, Column, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+
+from src.common.db.base import Base
+from src.core.image_text_alignment.dtos import ImagePredictionDTO
 
 
 class Categories(BaseModel):
@@ -91,3 +96,28 @@ class ProductOverviewRecord(BaseModel):
                     else:
                         lines.append(f"  - {name}: {value}")
         return "\n".join(lines)
+
+
+class ImagePredictionRecord(Base):
+    __tablename__ = "image_prediction"
+    batch_key = Column(PG_UUID(as_uuid=True), primary_key=True)
+    product_key = Column(PG_UUID(as_uuid=True), primary_key=True)
+    image_path = Column(Text)
+    is_mismatch = Column(Boolean)
+    justification = Column(Text)
+    description_synthesis = Column(Text)
+    image_summary = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True))
+    updated_at = Column(TIMESTAMP(timezone=True))
+
+    def to_dict(self) -> dict:
+        return {
+            field: getattr(self, field)
+            for field in ImagePredictionDTO.model_fields
+        }
+
+    def to_model(self) -> ImagePredictionDTO:
+        return ImagePredictionDTO(**self.to_dict())
+
+    def to_dto(self) -> ImagePredictionDTO:
+        return self.to_model()
