@@ -1,11 +1,14 @@
 import logging
 import os
+import re
+
+from sqlalchemy.orm import Session
 
 from src.common.logging import setup_logging
-from src.core.data_ingestion.dtos import DunelmCoalesceOutputDTO
 from src.core.data_ingestion.repositories import (
     AttributeRepository,
     DunelmCoalesceOutputRepository,
+    ImageFilePathMappingRepository,
     ProductAttributeValueRepository,
     ProductRepository,
 )
@@ -21,25 +24,37 @@ setup_logging()
 
 
 class ProductOverviewRepository:
-    def __init__(
-        self,
-        product_repo: ProductRepository,
-        coalesce_repo: DunelmCoalesceOutputRepository,
-        pav_repo: ProductAttributeValueRepository,
-        attr_repo: AttributeRepository,
-    ) -> None:
-        self.product_repo = product_repo
-        self.coalesce_repo = coalesce_repo
-        self.pav_repo = pav_repo
-        self.attr_repo = attr_repo
+    def __init__(self, session: Session) -> None:
+        self.product_repo = ProductRepository(session)
+        self.coalesce_repo = DunelmCoalesceOutputRepository(session)
+        self.pav_repo = ProductAttributeValueRepository(session)
+        self.attr_repo = AttributeRepository(session)
+        self.image_path_repo = ImageFilePathMappingRepository(session)
 
-    def _get_image_local_path(
-        self, coalesce: DunelmCoalesceOutputDTO, i: int
+    @staticmethod
+    def _map_image_url_to_local_path(
+        image_url: str, image_path_repo: ImageFilePathMappingRepository
     ) -> str | None:
-        url = getattr(coalesce, f"image_url_{i}", None)
-        if url:
-            filename = os.path.basename(url.split("?")[0])
-            return f"data/image/{filename}"
+        """
+        Trim the image_url at the file extension (jpg, jpeg, png, etc.)
+        and map the trimmed url to the local path. Bespoke to the current
+        file structure.
+        """
+        if image_url:
+            match = re.search(
+                r"\.(jpg|jpeg|png|webp|gif)", image_url, re.IGNORECASE
+            )
+            if match:
+                ext = match.group(0)
+                idx = image_url.lower().find(ext) + len(ext)
+                trimmed_url = image_url[:idx]
+            else:
+                trimmed_url = image_url
+            mapping = image_path_repo.find(image_url=trimmed_url)
+            if mapping:
+                local_path = mapping[0].to_dto().image_path.replace("\\", "/")
+                filename = os.path.basename(local_path)
+                return f"data/image/{filename}"
         return None
 
     def get_product_overview(
@@ -59,8 +74,6 @@ class ProductOverviewRepository:
             )
             return None
 
-        # TODO: This is a hack to get the coalesce record for the product.
-        # system_name is the URL this time, not the EAN.
         coalesce_orm = self.coalesce_repo.get_by_product_url(
             product.system_name
         )
@@ -92,14 +105,22 @@ class ProductOverviewRepository:
                 }
             )
 
-        image_local_paths = ImageLocalPaths(
-            **{
-                f"image_local_path_{i}": self._get_image_local_path(
-                    coalesce, i
+        image_local_paths_dict = {}
+        for i in range(1, 11):
+            image_url = getattr(coalesce, f"image_url_{i}", None)
+            logger.info(f"Checking image_url_{i}: {image_url}")
+            if image_url is not None:
+                local_path = self._map_image_url_to_local_path(
+                    image_url, self.image_path_repo
                 )
-                for i in range(1, 11)
-            }
-        )
+                logger.info(
+                    f"Mapped image_url_{i} to local path: {local_path}"
+                )
+            else:
+                local_path = None
+                logger.info(f"No image_url_{i} present.")
+            image_local_paths_dict[f"image_local_path_{i}"] = local_path
+        image_local_paths = ImageLocalPaths(**image_local_paths_dict)
 
         categories = Categories(
             **{

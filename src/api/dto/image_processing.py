@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
+from src.core.image_text_alignment.dtos import ProductImageCheckResult
+
 
 class ImageProcessingResponse(BaseModel):
-    """Placeholder response model for LLM return object."""
-
-    prediction: bool
+    predictions: list[ProductImageCheckResult]

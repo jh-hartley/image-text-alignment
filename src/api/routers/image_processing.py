@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 
 from src.api.dto.image_processing import ImageProcessingResponse
 from src.common.db import get_db
-from src.core.image_text_alignment.service import (
-    CheckImageTextAlignmentService,
+from src.common.llm import Llm
+from src.core.image_text_alignment.repositories import (
+    ProductOverviewRepository,
 )
+from src.core.image_text_alignment.service import ImageTextAlignmentService
 
 
 def image_processing_router() -> APIRouter:
@@ -17,10 +19,12 @@ def image_processing_router() -> APIRouter:
     async def check_colour_matches_description(
         product_key: str, db: Session = Depends(get_db)
     ) -> ImageProcessingResponse:
-        service = CheckImageTextAlignmentService.from_session(db)
-        prediction = await service.check_colour_matches_description(
-            product_key
+        llm = Llm()
+        service = ImageTextAlignmentService(
+            product_overview_repo=ProductOverviewRepository(session=db),
+            llm=llm,
         )
-        return ImageProcessingResponse(prediction=prediction)
+        predictions = await service.check_images_for_products([product_key])
+        return ImageProcessingResponse(predictions=predictions)
 
     return router
