@@ -17,6 +17,7 @@ from src.core.image_text_alignment.records import (
     ImageLocalPaths,
     Prices,
     ProductOverviewRecord,
+    ImagePredictionRecord,
 )
 
 logger = logging.getLogger(__name__)
@@ -151,3 +152,26 @@ class ProductOverviewRepository:
             review_rating=getattr(coalesce, "review_rating", None),
             attribute_values=attribute_values,
         )
+
+
+class ImagePredictionRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get(self, batch_key: str, product_key: str) -> ImagePredictionRecord | None:
+        return (
+            self.session.query(ImagePredictionRecord)
+            .filter_by(batch_key=batch_key, product_key=product_key)
+            .first()
+        )
+
+    def find_by_batch(self, batch_key: str) -> list[ImagePredictionRecord]:
+        return (
+            self.session.query(ImagePredictionRecord)
+            .filter_by(batch_key=batch_key)
+            .all()
+        )
+
+    def add(self, record: ImagePredictionRecord) -> None:
+        self.session.add(record)
+        self.session.commit()
