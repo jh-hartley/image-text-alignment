@@ -52,7 +52,10 @@ def main(product_key: str | None = None):
                     f.write(f"Product Key: {result.product_key}\n")
                     f.write(f"Is Mismatch: {result.is_mismatch}\n")
                     f.write(f"Justification: {result.justification}\n")
-                    f.write(f"Description Synthesis: {result.description_synthesis}\n")
+                    f.write(
+                        "Description Synthesis: "
+                        f"{result.description_synthesis}\n"
+                    )
                     f.write(f"Image Summary: {result.image_summary}\n\n")
             print(f"Results saved to {output_txt}")
 

@@ -18,8 +18,8 @@ class ProductImageCheckLLMResponse(BaseModel):
 
 class ProductImageCheckResult(BaseModel):
     product_key: str
+    image_path: str | None = None
     is_mismatch: bool
     justification: str
-    image_path: str | None = None
     description_synthesis: str
     image_summary: str
