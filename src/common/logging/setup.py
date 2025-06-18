@@ -1,6 +1,6 @@
 import logging
 
-from src.common.logs.filters import HealthCheckFilter
+from src.common.logging.filters import HealthCheckFilter
 from src.config import config
 
 

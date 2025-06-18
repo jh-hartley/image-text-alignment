@@ -3,7 +3,7 @@ import logging
 
 from src.common.llm.base_classes import BaseImageProcessor
 from src.common.llm.registry import register_provider
-from src.common.logs import setup_logging
+from src.common.logging import setup_logging
 
 from .constants import PROVIDER
 

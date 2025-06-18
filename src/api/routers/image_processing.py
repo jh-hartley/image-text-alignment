@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.api.dto.image_processing import ImageProcessingResponse
 from src.common.db import get_db
-from src.core.check_image_text_alignment.service import (
+from src.core.image_text_alignment.service import (
     CheckImageTextAlignmentService,
 )
 

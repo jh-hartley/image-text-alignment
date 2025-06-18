@@ -8,7 +8,7 @@ from src.common.llm.base_classes.base_embedding import (
     BaseEmbeddingProvider,
 )
 from src.common.llm.registry import register_provider
-from src.common.logs import setup_logging
+from src.common.logging import setup_logging
 from src.config import config
 
 from .constants import PROVIDER

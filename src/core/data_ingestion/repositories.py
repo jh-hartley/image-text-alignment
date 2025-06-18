@@ -31,6 +31,15 @@ class DunelmCoalesceOutputRepository:
             .first()
         )
 
+    def get_by_product_url(
+        self, product_url: str
+    ) -> DunelmCoalesceOutputRecord | None:
+        return (
+            self.session.query(DunelmCoalesceOutputRecord)
+            .filter_by(product_url=product_url)
+            .first()
+        )
+
     def find(self, **kwargs: str) -> list[DunelmCoalesceOutputRecord]:
         """
         Find all records matching the given column-value pairs.
@@ -188,6 +197,15 @@ class ProductAttributeValueRepository:
             self.session.query(ProductAttributeValueRecord)
             .filter_by(product_key=product_key, attribute_key=attribute_key)
             .first()
+        )
+
+    def get_by_product_key(
+        self, product_key: str
+    ) -> list[ProductAttributeValueRecord]:
+        return (
+            self.session.query(ProductAttributeValueRecord)
+            .filter_by(product_key=product_key)
+            .all()
         )
 
     def find(self, **kwargs: str) -> list[ProductAttributeValueRecord]:
