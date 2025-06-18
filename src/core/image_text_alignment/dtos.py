@@ -17,3 +17,14 @@ class ProductImageCheckResult(BaseModel):
     is_mismatch: bool
     justification: str
     image_path: str | None = None
+
+
+class ImageLoadResult(BaseModel):
+    image_bytes: bytes | None = None
+    filename: str | None = None
+
+    @classmethod
+    def from_loader(
+        cls, image_bytes: bytes | None, filename: str | None
+    ) -> "ImageLoadResult":
+        return cls(image_bytes=image_bytes, filename=filename)

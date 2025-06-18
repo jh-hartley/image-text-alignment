@@ -1,7 +1,7 @@
 import logging
 
-from src.common.image_encoding import image_file_to_bytes
 from src.common.llm import ImageEncoder, Llm
+from src.core.image_encoding import load_image_bytes_from_url
 from src.core.image_text_alignment.dtos import (
     ProductImageCheckInput,
     ProductImageCheckResult,
@@ -67,25 +67,24 @@ class ImageTextAlignmentService:
                 )
                 continue
 
-            image_path = image_paths[0]
-            self.logger.info(
-                f"Checking image for product_key={product_key}: {image_path}"
+            image_url = image_paths[0]
+            image_result = load_image_bytes_from_url(
+                self.product_overview_repo.product_repo.session, image_url
             )
-            try:
-                image_bytes = image_file_to_bytes(image_path)
-                image_str = self.image_encoder.encode_image(image_bytes)
-            except FileNotFoundError:
-                self.logger.warning(f"Image file not found: {image_path}")
+            if image_result.image_bytes is None:
+                self.logger.warning(f"Image file not found: {image_url}")
                 results.append(
                     ProductImageCheckResult(
                         product_key=product_key,
                         is_mismatch=False,
                         justification="Image file not found.",
-                        image_path=image_path,
+                        image_path=image_url,
                     )
                 )
                 continue
-
+            image_str = self.image_encoder.encode_image(
+                image_result.image_bytes
+            )
             description = product.to_llm_string()
             input_dto = ProductImageCheckInput(
                 product_key=product_key,
@@ -93,7 +92,7 @@ class ImageTextAlignmentService:
                 image=image_str,
             )
             result = await self.llm_checker.check(input_dto)
-            result.image_path = image_path
+            result.image_path = image_url
             results.append(result)
 
         return results
@@ -117,7 +116,3 @@ class ImageTextAlignmentService:
         return [
             v for v in product.image_local_paths.model_dump().values() if v
         ]
-
-    def _encode_image(self, image_path: str) -> str:
-        image_bytes = image_file_to_bytes(image_path)
-        return self.image_encoder.encode_image(image_bytes)
