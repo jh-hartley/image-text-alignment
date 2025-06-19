@@ -36,6 +36,6 @@ def setup_database() -> Engine:
 engine = setup_database()
 
 
-@event.listens_for(engine, "connect", propagate=True)  # type: ignore[misc]
+@event.listens_for(engine, "connect", propagate=True)
 def connect(dbapi_connection: Any, _: Any) -> None:
     register_vector(dbapi_connection, arrays=True)
