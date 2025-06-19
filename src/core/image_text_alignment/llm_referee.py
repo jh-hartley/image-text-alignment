@@ -12,7 +12,7 @@ class ProductImageLLMReferee:
     def __init__(self, llm: Llm, image_encoder: ImageEncoder | None = None):
         self.llm = llm
         self.image_encoder = image_encoder or ImageEncoder()
-        self.system_prompt = REFEREE_PROMPT
+        self.system_prompt: str = REFEREE_PROMPT
 
     async def referee(
         self, input: ProductImageRefereeInput

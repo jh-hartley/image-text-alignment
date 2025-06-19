@@ -12,7 +12,7 @@ class ProductImageLLMClassifier:
     def __init__(self, llm: Llm, image_encoder: ImageEncoder | None = None):
         self.llm = llm
         self.image_encoder = image_encoder or ImageEncoder()
-        self.system_prompt = CLASSIFIER_PROMPT
+        self.system_prompt: str = CLASSIFIER_PROMPT
 
     async def classify_image_colour(
         self, input: ProductImageCheckInput

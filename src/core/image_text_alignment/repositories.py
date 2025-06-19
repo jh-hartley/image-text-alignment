@@ -4,7 +4,7 @@ import re
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import outerjoin, select
+from sqlalchemy import and_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
@@ -193,8 +193,10 @@ class AsyncImagePredictionRepository:
     ) -> ImagePredictionRecord | None:
         result = await self.session.execute(
             select(ImagePredictionRecord).where(
-                ImagePredictionRecord.batch_key == batch_key,
-                ImagePredictionRecord.product_key == product_key,
+                and_(
+                    ImagePredictionRecord.batch_key == batch_key,
+                    ImagePredictionRecord.product_key == product_key,
+                )
             )
         )
         return cast(ImagePredictionRecord | None, result.scalar_one_or_none())
@@ -210,23 +212,21 @@ class AsyncImagePredictionRepository:
         return cast(list[ImagePredictionRecord], result.scalars().all())
 
     async def find_unprocessed_products(self, batch_key: UUID) -> list[str]:
-        stmt = (
-            select(ProductRecord.product_key)
-            .select_from(
-                outerjoin(
-                    ProductRecord,
-                    ImagePredictionRecord,
-                    (
-                        ProductRecord.product_key
-                        == ImagePredictionRecord.product_key
-                    )
-                    & (ImagePredictionRecord.batch_key == batch_key),
-                )
-            )
-            .where(ImagePredictionRecord.product_key.is_(None))
+        all_products_stmt = select(ProductRecord)
+        all_products_result = await self.session.execute(all_products_stmt)
+        all_product_keys = {
+            str(row[0].product_key) for row in all_products_result.all()
+        }
+
+        processed_stmt = select(ImagePredictionRecord).where(
+            ImagePredictionRecord.batch_key == batch_key
         )
-        result = await self.session.execute(stmt)
-        return [str(row[0]) for row in result.all()]
+        processed_result = await self.session.execute(processed_stmt)
+        processed_product_keys = {
+            str(row[0].product_key) for row in processed_result.all()
+        }
+
+        return list(all_product_keys - processed_product_keys)
 
     async def add(self, record: ImagePredictionRecord) -> None:
         stmt = pg_insert(ImagePredictionRecord).values(record.to_dict())
