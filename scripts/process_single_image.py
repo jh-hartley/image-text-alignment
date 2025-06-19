@@ -52,21 +52,10 @@ def main(product_key: str | None = None):
             with open(output_txt, "w", encoding="utf-8") as f:
                 for result in results:
                     f.write(f"Product Key: {result.product_key}\n")
+                    f.write("Colour Status: " f"{result.colour_status}\n")
                     f.write(
-                        "Attribute Matches Image: "
-                        f"{result.attribute_matches_image}\n"
-                    )
-                    f.write(
-                        "Description Matches Image: "
-                        f"{result.description_matches_image}\n"
-                    )
-                    f.write(
-                        "Attribute Image Justification: "
-                        f"{result.attribute_image_justification}\n"
-                    )
-                    f.write(
-                        "Description Image Justification: "
-                        f"{result.description_image_justification}\n"
+                        "Colour Justification: "
+                        f"{result.colour_justification}\n"
                     )
                     f.write(
                         "Description Synthesis: "

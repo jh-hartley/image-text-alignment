@@ -1,4 +1,4 @@
-from .llm_checker import ProductImageLLMChecker
+from .llm_classifier import ProductImageLLMClassifier
 from .service import ImageTextAlignmentService
 
-__all__ = ["ProductImageLLMChecker", "ImageTextAlignmentService"]
+__all__ = ["ProductImageLLMClassifier", "ImageTextAlignmentService"]

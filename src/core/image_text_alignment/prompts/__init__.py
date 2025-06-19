@@ -1,3 +1,3 @@
-from .txt_loading import PRODUCT_IMAGE_SYSTEM_PROMPT
+from .txt_loading import CLASSIFIER_PROMPT, REFEREE_PROMPT
 
-__all__ = ["PRODUCT_IMAGE_SYSTEM_PROMPT"]
+__all__ = ["CLASSIFIER_PROMPT", "REFEREE_PROMPT"]

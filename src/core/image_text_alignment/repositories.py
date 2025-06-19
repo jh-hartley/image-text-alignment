@@ -234,12 +234,15 @@ class AsyncImagePredictionRepository:
             index_elements=["batch_key", "product_key"],
             set_={
                 "image_name": record.image_name,
-                "attribute_matches_image": record.attribute_matches_image,
-                "description_matches_image": record.description_matches_image,
-                "attribute_image_justification": record.attribute_image_justification,
-                "description_image_justification": record.description_image_justification,
-                "description_synthesis": record.description_synthesis,
+                "colour_status": record.colour_status,
+                "colour_justification": record.colour_justification,
                 "image_summary": record.image_summary,
+                "description_synthesis": record.description_synthesis,
+                "final_colour_status": record.final_colour_status,
+                "final_colour_justification": (
+                    record.final_colour_justification
+                ),
+                "created_at": record.created_at,
                 "updated_at": record.updated_at,
             },
         )

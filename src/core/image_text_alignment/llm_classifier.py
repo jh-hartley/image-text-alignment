@@ -2,21 +2,21 @@ from src.common.llm import ImageEncoder, Llm
 from src.core.image_text_alignment.dtos import (
     ProductImageCheckInput,
     ProductImageCheckLLMResponse,
-    ProductImageCheckResult,
+    ProductImageClassificationResult,
 )
 
-from .prompts import PRODUCT_IMAGE_SYSTEM_PROMPT
+from .prompts import CLASSIFIER_PROMPT
 
 
-class ProductImageLLMChecker:
+class ProductImageLLMClassifier:
     def __init__(self, llm: Llm, image_encoder: ImageEncoder | None = None):
         self.llm = llm
         self.image_encoder = image_encoder or ImageEncoder()
-        self.system_prompt = PRODUCT_IMAGE_SYSTEM_PROMPT
+        self.system_prompt = CLASSIFIER_PROMPT
 
-    async def check(
+    async def classify_image_colour(
         self, input: ProductImageCheckInput
-    ) -> ProductImageCheckResult:
+    ) -> ProductImageClassificationResult:
         human_prompt = input.description
         image = input.image
 
@@ -26,12 +26,11 @@ class ProductImageLLMChecker:
             output_type=ProductImageCheckLLMResponse,
             images=[image],
         )
-        return ProductImageCheckResult(
+        return ProductImageClassificationResult(
             product_key=input.product_key,
-            attribute_matches_image=prediction.attribute_matches_image,
-            description_matches_image=prediction.description_matches_image,
-            attribute_image_justification=prediction.attribute_image_justification,
-            description_image_justification=prediction.description_image_justification,
+            image_path=input.image,
+            colour_status=prediction.colour_status,
+            colour_justification=prediction.colour_justification,
             description_synthesis=prediction.description_synthesis,
             image_summary=prediction.image_summary,
         )
