@@ -14,9 +14,14 @@ from src.core.data_ingestion.repositories import ProductRepository
 from src.core.image_encoding import load_image_bytes_from_url
 from src.core.image_text_alignment.dtos import (
     ProductImageCheckInput,
-    ProductImageCheckResult,
+    ProductImageClassificationResult,
+    ProductImageRefereeInput,
+    ProductImageRefereeResult,
 )
-from src.core.image_text_alignment.llm_checker import ProductImageLLMChecker
+from src.core.image_text_alignment.llm_classifier import (
+    ProductImageLLMClassifier,
+)
+from src.core.image_text_alignment.llm_referee import ProductImageLLMReferee
 from src.core.image_text_alignment.records import (
     ImagePredictionRecord,
     ProductOverviewRecord,
@@ -37,14 +42,15 @@ class ImageTextAlignmentService:
         max_workers: int | None = None,
     ) -> None:
         self.product_overview_repo = product_overview_repo
-        self.llm_checker = ProductImageLLMChecker(llm)
+        self.llm_checker = ProductImageLLMClassifier(llm)
+        self.llm_referee = ProductImageLLMReferee(llm)
         self.logger = logger or logging.getLogger(__name__)
         self.image_encoder = ImageEncoder()
         self.max_workers = max_workers or config.DB_ASYNC_POOL_SIZE
 
     async def check_images_for_products(
         self, product_keys: list[str], batch_key: UUID | None = None
-    ) -> list[ProductImageCheckResult]:
+    ) -> list[ProductImageClassificationResult]:
         """
         Process specific product keys, optionally as part of a batch.
         If no batch_key is provided, generates a new one.
@@ -53,7 +59,6 @@ class ImageTextAlignmentService:
         if batch_key is None:
             batch_key = uuid()
 
-        # Process in chunks based on max_workers
         chunks = [
             product_keys[i : i + self.max_workers]
             for i in range(0, len(product_keys), self.max_workers)
@@ -89,7 +94,7 @@ class ImageTextAlignmentService:
 
     async def _process_single_product(
         self, batch_key: UUID, product_key: str
-    ) -> ProductImageCheckResult:
+    ) -> ProductImageClassificationResult:
         """
         Process a single product and store its result.
         This is an atomic operation that includes both processing and storage.
@@ -102,15 +107,19 @@ class ImageTextAlignmentService:
             self.logger.warning(
                 f"No product overview found for product_key={product_key}"
             )
-            result = ProductImageCheckResult(
+            result = ProductImageClassificationResult(
                 product_key=product_key,
-                is_mismatch=False,
-                justification="No product overview found.",
+                colour_status="N/A",
+                colour_justification="No product overview found.",
                 image_path=None,
                 description_synthesis="N/A",
                 image_summary="N/A",
             )
-            await self._store_result(batch_key, result)
+            referee_result = ProductImageRefereeResult(
+                final_colour_status="N/A",
+                final_colour_justification="No product overview found.",
+            )
+            await self._store_result(batch_key, result, referee_result)
             return result
 
         image_paths = [
@@ -121,30 +130,38 @@ class ImageTextAlignmentService:
             self.logger.warning(
                 f"No images found for product_key={product_key}"
             )
-            result = ProductImageCheckResult(
+            result = ProductImageClassificationResult(
                 product_key=product_key,
-                is_mismatch=False,
-                justification="No images found.",
+                colour_status="N/A",
+                colour_justification="No images found.",
                 image_path=None,
                 description_synthesis="N/A",
                 image_summary="N/A",
             )
-            await self._store_result(batch_key, result)
+            referee_result = ProductImageRefereeResult(
+                final_colour_status="N/A",
+                final_colour_justification="No images found.",
+            )
+            await self._store_result(batch_key, result, referee_result)
             return result
 
         image_url = image_paths[0]
         image_result = load_image_bytes_from_url(image_url)
         if image_result.image_bytes is None:
             self.logger.warning(f"Image file not found: {image_url}")
-            result = ProductImageCheckResult(
+            result = ProductImageClassificationResult(
                 product_key=product_key,
-                is_mismatch=False,
-                justification="Image file not found.",
+                colour_status="N/A",
+                colour_justification="Image file not found.",
                 image_path=image_result.filename,
                 description_synthesis="N/A",
                 image_summary="N/A",
             )
-            await self._store_result(batch_key, result)
+            referee_result = ProductImageRefereeResult(
+                final_colour_status="N/A",
+                final_colour_justification="Image file not found.",
+            )
+            await self._store_result(batch_key, result, referee_result)
             return result
 
         image_str = self.image_encoder.encode_image(image_result.image_bytes)
@@ -154,27 +171,55 @@ class ImageTextAlignmentService:
             description=description,
             image=image_str,
         )
-        result = await self.llm_checker.check(input_dto)
+        result = await self.llm_checker.classify_image_colour(input_dto)
         result.image_path = image_result.filename
-        await self._store_result(batch_key, result)
+
+        # Only call referee if the classifier result is not "MATCH"
+        if result.colour_status != "MATCH":
+            referee_input = ProductImageRefereeInput(
+                product_key=product_key,
+                description=description,
+                image=image_str,
+                classifier_colour_status=result.colour_status,
+                classifier_colour_justification=result.colour_justification,
+                classifier_image_summary=result.image_summary,
+                classifier_description_synthesis=result.description_synthesis,
+            )
+            referee_result = await self.llm_referee.referee(referee_input)
+        else:
+            # If it's a match, use the classifier's result as the final result
+            referee_result = ProductImageRefereeResult(
+                final_colour_status=result.colour_status,
+                final_colour_justification=result.colour_justification,
+            )
+
+        await self._store_result(batch_key, result, referee_result)
         return result
 
     async def _store_result(
-        self, batch_key: UUID, result: ProductImageCheckResult
+        self,
+        batch_key: UUID,
+        result: ProductImageClassificationResult,
+        referee_result: ProductImageRefereeResult,
     ) -> None:
         """
         Store or update a prediction result in the database.
         Updates the timestamps appropriately.
         """
         now = clock.now()
+        image_path = result.image_path
+        if image_path and image_path.startswith("data/image/"):
+            image_path = image_path[len("data/image/") :]
         record = ImagePredictionRecord(
             batch_key=batch_key,
             product_key=UUID(result.product_key),
-            image_path=result.image_path,
-            is_mismatch=result.is_mismatch,
-            justification=result.justification,
+            image_name=image_path,
+            colour_status=result.colour_status,
+            colour_justification=result.colour_justification,
             description_synthesis=result.description_synthesis,
             image_summary=result.image_summary,
+            final_colour_status=referee_result.final_colour_status,
+            final_colour_justification=referee_result.final_colour_justification,
             created_at=now,
             updated_at=now,
         )

@@ -31,7 +31,7 @@ def get_random_product_keys(
     query = session.query(ProductRecord.product_key)
     if category_name:
         category_keys = [
-            row.category_key
+            row[0]
             for row in session.query(CategoryRecord.category_key).filter(
                 CategoryRecord.friendly_name == category_name
             )

@@ -106,7 +106,7 @@ ignore = ["B008"]  # Ignore B008 for FastAPI's Depends
 
 [tool.black]
 line-length = 79
-target-version = ['py311', 'py312', 'py313']
+target-version = ['py311', 'py312']
 include = '\.pyi?$'
 
 [tool.isort]

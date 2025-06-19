@@ -52,8 +52,11 @@ def main(product_key: str | None = None):
             with open(output_txt, "w", encoding="utf-8") as f:
                 for result in results:
                     f.write(f"Product Key: {result.product_key}\n")
-                    f.write(f"Is Mismatch: {result.is_mismatch}\n")
-                    f.write(f"Justification: {result.justification}\n")
+                    f.write("Colour Status: " f"{result.colour_status}\n")
+                    f.write(
+                        "Colour Justification: "
+                        f"{result.colour_justification}\n"
+                    )
                     f.write(
                         "Description Synthesis: "
                         f"{result.description_synthesis}\n"
